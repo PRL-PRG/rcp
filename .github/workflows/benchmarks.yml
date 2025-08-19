@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           git log -1
-          git log -1 --pretty=%P '${{ github.sha }}'
+          git log -1 --pretty=%P
       - name: Compute hashes
         id: vars
         shell: bash
