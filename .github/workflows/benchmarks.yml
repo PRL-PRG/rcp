@@ -1,0 +1,87 @@
+name: benchmarks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    name: Run benchmarks in Docker
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Compute hashes
+        id: vars
+        shell: bash
+        run: |
+          rsh_commit=$(git -C external/rsh/external/R rev-parse HEAD)
+          rcp_commit=$(git rev-parse HEAD)
+          echo "rsh_commit=$rsh_commit" >> "$GITHUB_OUTPUT"
+          echo "rcp_commit=$rcp_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build prlrpg/rcp-base
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.rcp-base
+          tags: |
+            prlrpg/rcp-base:latest
+            prlrpg/rcp-base
+          load: true
+          push: false
+          platforms: linux/amd64
+          cache-from: type=gha,scope=rcp-base
+          cache-to: type=gha,mode=max,scope=rcp-base
+
+      - name: Build prlrpg/rcp-rsh
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.rsh
+          build-args: |
+            RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
+          tags: prlrpg/rcp-rsh:${{ steps.vars.outputs.rsh_commit }}
+          load: true
+          push: false
+          platforms: linux/amd64
+          cache-from: type=gha,scope=rcp-rsh
+          cache-to: type=gha,mode=max,scope=rcp-rsh
+
+      - name: Build prlrpg/rcp
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.rcp
+          build-args: |
+            RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
+            RCP_COMMIT=${{ steps.vars.outputs.rcp_commit }}
+          tags: prlrpg/rcp:${{ steps.vars.outputs.rcp_commit }}
+          load: true
+          push: false
+          platforms: linux/amd64
+          cache-from: type=gha,scope=rcp
+          cache-to: type=gha,mode=max,scope=rcp
+
+      - name: Run benchmarks
+        shell: bash
+        run: |
+          mkdir benchmark-results
+          docker run \
+            --rm \
+            -v "${{ github.workspace }}/benchmark-results:/rcp/rcp/benchmark-results" \
+            prlrpg/rcp:${{ steps.vars.outputs.rcp_commit }} \
+            make benchmark
+      
+      - name: Archive benchmarks
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmarks
+          path: |
+            benchmark-results/*.csv

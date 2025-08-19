@@ -1,0 +1,16 @@
+FROM prl-prg/rcp-base
+
+ARG RSH_COMMIT
+
+RUN mkdir -p -m 0700 /root/.ssh \
+ && ssh-keyscan github.com >> /root/.ssh/known_hosts
+
+RUN --mount=type=ssh git clone git@github.com:PRL-PRG/r-compile-server.git /rsh && \
+    git -C /rsh checkout --detach ${RSH_COMMIT} && \
+    git -C /rsh/external submodule update --init R
+
+RUN cd /rsh && \
+    ./tools/build-gnur.sh external/R
+
+ENV R_HOME=/rsh/external/R
+ENV PATH="${PATH}:${R_HOME}/bin"

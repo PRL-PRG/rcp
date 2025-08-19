@@ -1,0 +1,14 @@
+ARG RSH_COMMIT=latest
+
+FROM prl-prg/rcp-rsh:${RSH_COMMIT}
+
+RUN R -e 'install.packages("microbenchmark", repos="http://cran.r-project.org")'
+
+ARG RCP_COMMIT
+RUN --mount=type=ssh git clone git@github.com:PRL-PRG/rcp /rcp && \
+    git -C /rcp/external checkout --detach ${RCP_COMMIT} && \
+    git -C /rcp/external submodule update --init rsh 
+
+WORKDIR /rcp/rcp
+
+RUN make
