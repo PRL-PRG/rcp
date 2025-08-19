@@ -97,12 +97,13 @@ jobs:
       - name: Run benchmarks
         shell: bash
         run: |
-          mkdir benchmark-results
+          rm -fr benchmark-results
+          mkdir -p benchmark-results
           docker run \
             --rm \
             -v "${{ github.workspace }}/benchmark-results:/rcp/rcp/benchmark-results" \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark
+            make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results BENCH_ITER=1
       
       - name: Archive benchmarks
         uses: actions/upload-artifact@v4

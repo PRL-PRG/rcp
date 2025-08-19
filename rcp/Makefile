@@ -63,7 +63,7 @@ install: $(R_LIB)
 
 BENCH_ITER ?= 15
 BENCH_NAME ?= $(shell echo "rcp-$$(date +'%Y%m%d-%H%M%S')-$$(git rev-parse --short HEAD)")
-BENCH_OUT_DIR := $(shell echo "$$(pwd)/benchmark-results")/$(BENCH_NAME)
+BENCH_OUT_DIR ?= $(shell echo "$$(pwd)/benchmark-results")/$(BENCH_NAME)
 OPTS ?= --rsh
 
 TXT_BOLD = \033[1m
@@ -100,8 +100,6 @@ benchmark: install
 		echo "$(TXT_RED)FAIL$(NO_NORM) $$exit$(TXT_NORM)"; \
 		fi; \
 	done
-	$(R) -f $(BENCH_DIR)/benchmark.R --args save $(BENCH_OUT_DIR)/benchmarks.csv $(BENCH_OUT_DIR)
-
 
 test: install
 
