@@ -81,7 +81,7 @@ jobs:
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
             RCP_COMMIT=${{ steps.vars.outputs.rcp_commit }}
-          tags: ghcr.io/prl-prg/rcp:${{ github.sha }}
+          tags: ghcr.io/prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }}
           push: true
           platforms: linux/amd64
           cache-from: type=gha,scope=rcp
