@@ -25,9 +25,7 @@ jobs:
         shell: bash
         run: |
           rsh_commit=$(git submodule status | sed -n 's/^[ +-]*\([0-9a-f]\{40\}\) .*external\/rsh.*/\1/p')
-          rcp_commit=$(git rev-parse HEAD)
           echo "rsh_commit=$rsh_commit" >> "$GITHUB_OUTPUT"
-          echo "rcp_commit=$rcp_commit" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,8 +45,7 @@ jobs:
           tags: |
             ghcr.io/prl-prg/rcp-base:latest
             ghcr.io/prl-prg/rcp-base
-          load: true
-          push: false
+          push: true
           platforms: linux/amd64
           cache-from: type=gha,scope=rcp-base
           cache-to: type=gha,mode=max,scope=rcp-base
@@ -61,8 +58,7 @@ jobs:
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
           tags: ghcr.io/prl-prg/rcp-rsh:${{ steps.vars.outputs.rsh_commit }}
-          load: true
-          push: false
+          push: true
           platforms: linux/amd64
           cache-from: type=gha,scope=rcp-rsh
           cache-to: type=gha,mode=max,scope=rcp-rsh
@@ -74,9 +70,8 @@ jobs:
           file: Dockerfile.rcp
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
-            RCP_COMMIT=${{ steps.vars.outputs.rcp_commit }}
-          tags: ghcr.io/prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }}
-          load: true
+            RCP_COMMIT=${{ github.sha }}
+          tags: ghcr.io/prl-prg/rcp:${{ github.sha }}
           push: true
           platforms: linux/amd64
           cache-from: type=gha,scope=rcp
