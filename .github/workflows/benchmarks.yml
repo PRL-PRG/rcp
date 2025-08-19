@@ -10,7 +10,7 @@ on:
 jobs:
   benchmarks:
     name: Run benchmarks in Docker
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
