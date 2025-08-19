@@ -22,8 +22,8 @@ jobs:
       - name: info
         shell: bash
         run: |
-          git log -1
-          git log -1 --pretty=%P
+          git log -1 --format=%B
+          git log -1 --format=%B "${{ github.sha }}" | sed -n 's/^    Merge \([0-9a-f]*\) into .*/\1/p' || echo "${{ github.sha }}"
       - name: Compute hashes
         id: vars
         shell: bash
@@ -33,7 +33,7 @@ jobs:
         # basically what would be the result of merging the PR.
         run: |
           rsh_commit=$(git submodule status | sed -n 's/^[ +-]*\([0-9a-f]\{40\}\) .*external\/rsh.*/\1/p')
-          rcp_commit=$(if git log -1 --pretty=%P '${{ github.sha }}' | grep -q ' '; then git rev-parse '${{ github.sha }}^2'; else echo '${{ github.sha }}'; fi)
+          rcp_commit=$(git log -1 --format=%B "${{ github.sha }}" | sed -n 's/^    Merge \([0-9a-f]*\) into .*/\1/p' || echo "${{ github.sha }}")
           echo "rsh_commit=$rsh_commit" >> "$GITHUB_OUTPUT"
           echo "rcp_commit=$rcp_commit" >> "$GITHUB_OUTPUT"
 
