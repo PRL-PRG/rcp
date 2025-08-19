@@ -57,7 +57,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.rsh
+          file: Dockerfile.rcp-rsh
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
           tags: prl-prg/rcp-rsh:${{ steps.vars.outputs.rsh_commit }}
@@ -77,7 +77,7 @@ jobs:
             RCP_COMMIT=${{ steps.vars.outputs.rcp_commit }}
           tags: prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }}
           load: true
-          push: false
+          push: true
           platforms: linux/amd64
           cache-from: type=gha,scope=rcp
           cache-to: type=gha,mode=max,scope=rcp
