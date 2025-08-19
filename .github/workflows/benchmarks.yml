@@ -109,7 +109,7 @@ jobs:
           docker run \
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results BENCH_ITER=1
+            make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results
       
       - name: Copy results
         run: |
