@@ -1,9 +1,9 @@
-FROM prl-prg/rcp-base
+FROM ghcr.io/prl-prg/rcp-base
 
 ARG RSH_COMMIT
 
 RUN mkdir -p -m 0700 /root/.ssh \
- && ssh-keyscan github.com >> /root/.ssh/known_hosts
+    && ssh-keyscan github.com >> /root/.ssh/known_hosts
 
 RUN --mount=type=ssh git clone git@github.com:PRL-PRG/r-compile-server.git /rsh && \
     git -C /rsh checkout --detach ${RSH_COMMIT} && \

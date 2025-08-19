@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ghcr.io/ubuntu:24.04
 
 # default to UTF-8 file.encoding
 ENV LANG=en_US.UTF-8

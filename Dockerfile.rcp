@@ -1,6 +1,6 @@
 ARG RSH_COMMIT=latest
 
-FROM prl-prg/rcp-rsh:${RSH_COMMIT}
+FROM ghcr.io/prl-prg/rcp-rsh:${RSH_COMMIT}
 
 RUN R -e 'install.packages("microbenchmark", repos="http://cran.r-project.org")'
 

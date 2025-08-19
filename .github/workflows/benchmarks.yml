@@ -45,8 +45,8 @@ jobs:
           context: .
           file: Dockerfile.rcp-base
           tags: |
-            prl-prg/rcp-base:latest
-            prl-prg/rcp-base
+            ghcr.io/prl-prg/rcp-base:latest
+            ghcr.io/prl-prg/rcp-base
           load: true
           push: false
           platforms: linux/amd64
@@ -60,7 +60,7 @@ jobs:
           file: Dockerfile.rcp-rsh
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
-          tags: prl-prg/rcp-rsh:${{ steps.vars.outputs.rsh_commit }}
+          tags: ghcr.io/prl-prg/rcp-rsh:${{ steps.vars.outputs.rsh_commit }}
           load: true
           push: false
           platforms: linux/amd64
@@ -75,7 +75,7 @@ jobs:
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
             RCP_COMMIT=${{ steps.vars.outputs.rcp_commit }}
-          tags: prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }}
+          tags: ghcr.io/prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }}
           load: true
           push: true
           platforms: linux/amd64
@@ -89,7 +89,7 @@ jobs:
           docker run \
             --rm \
             -v "${{ github.workspace }}/benchmark-results:/rcp/rcp/benchmark-results" \
-            prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }} \
+            ghcr.io/prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }} \
             make benchmark
       
       - name: Archive benchmarks
