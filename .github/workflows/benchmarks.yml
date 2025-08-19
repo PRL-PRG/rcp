@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-images:
-    name: Run benchmarks in Docker
+    name: Images
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -87,25 +87,31 @@ jobs:
           cache-to: type=gha,mode=max,scope=rcp
 
   run-benchmarks:
-    name: Run benchmarks in Docker
+    name: Benchmarks
     runs-on: self-hosted
     needs: build-images
     permissions:
       contents: read
       packages: write
     steps:
-      - name: Run benchmarks
+      - name: Execute benchmarks
         shell: bash
         run: |
           rm -fr benchmark-results
           mkdir -p benchmark-results
           docker run \
-            --rm \
-            -v "${{ github.workspace }}/benchmark-results:/rcp/rcp/benchmark-results" \
+            --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
             make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results BENCH_ITER=1
       
-      - name: Archive benchmarks
+      - name: Copy results
+        run: docker cp bench-run:/rcp/rcp/benchmark-results .
+      
+      - name: Cleanup
+        if: always()
+        run: docker rm -f bench-run || true
+      
+      - name: Archive results
         uses: actions/upload-artifact@v4
         with:
           name: benchmarks
