@@ -24,7 +24,7 @@ jobs:
         id: vars
         shell: bash
         run: |
-          rsh_commit=$(git -C external/rsh/external/R rev-parse HEAD)
+          rsh_commit=$(git submodule status | sed -n 's/^[ +-]*\([0-9a-f]\{40\}\) .*external\/rsh.*/\1/p')
           rcp_commit=$(git rev-parse HEAD)
           echo "rsh_commit=$rsh_commit" >> "$GITHUB_OUTPUT"
           echo "rcp_commit=$rcp_commit" >> "$GITHUB_OUTPUT"
