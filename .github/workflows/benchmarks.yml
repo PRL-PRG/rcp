@@ -90,6 +90,8 @@ jobs:
     name: Benchmarks
     runs-on: self-hosted
     needs: build-images
+    strategy:
+      max-parallel: 1
     permissions:
       contents: read
       packages: write
@@ -100,19 +102,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Execute benchmarks
         shell: bash
         run: |
-          rm -fr benchmark-results
-          mkdir -p benchmark-results
           docker run \
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
             make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results BENCH_ITER=1
       
       - name: Copy results
-        run: docker cp bench-run:/rcp/rcp/benchmark-results .
+        run: |
+          rm -fr benchmark-results
+          mkdir -p benchmark-results
+          docker cp bench-run:/rcp/rcp/benchmark-results .
       
       - name: Cleanup
         if: always()
