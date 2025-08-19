@@ -23,8 +23,10 @@ jobs:
         shell: bash
         run: |
           echo "${{ github.sha }}"
-          git rev-parse HEAD
-          git log
+          echo "${{ github.base_ref }}"
+          echo "${{ github.head_ref }}"
+          git cat-file -e ${{ github.sha }}^{commit} 2>/dev/null && echo ${{ github.sha }} || \
+            (git cat-file -e ${{ github.base_ref }}^{commit} 2>/dev/null && echo ${{ github.base_ref }})
       - name: Compute hashes
         id: vars
         shell: bash
