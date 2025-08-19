@@ -15,11 +15,14 @@ jobs:
       contents: read
       packages: write
     steps:
+      - name: Make SSH GitHub URLs use HTTPS
+        run: |
+          git config --global url."https://github.com/".insteadOf git@github.com:
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0
 
       - name: Compute hashes
         id: vars
