@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  benchmarks:
+  build-images:
     name: Run benchmarks in Docker
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -80,12 +80,20 @@ jobs:
           build-args: |
             RSH_COMMIT=${{ steps.vars.outputs.rsh_commit }}
             RCP_COMMIT=${{ steps.vars.outputs.rcp_commit }}
-          tags: ghcr.io/prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }}
+          tags: ghcr.io/prl-prg/rcp:${{ github.sha }}
           push: true
           platforms: linux/amd64
           cache-from: type=gha,scope=rcp
           cache-to: type=gha,mode=max,scope=rcp
 
+  run-benchmarks:
+    name: Run benchmarks in Docker
+    runs-on: self-hosted
+    needs: build-images
+    permissions:
+      contents: read
+      packages: write
+    steps:
       - name: Run benchmarks
         shell: bash
         run: |
@@ -93,7 +101,7 @@ jobs:
           docker run \
             --rm \
             -v "${{ github.workspace }}/benchmark-results:/rcp/rcp/benchmark-results" \
-            ghcr.io/prl-prg/rcp:${{ steps.vars.outputs.rcp_commit }} \
+            ghcr.io/prl-prg/rcp:${{ github.sha }} \
             make benchmark
       
       - name: Archive benchmarks
