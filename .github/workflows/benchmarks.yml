@@ -29,14 +29,6 @@ jobs:
           git log -1
           echo "Submodules:"
           git submodule status
-      # - name: Checkout the proper commit
-      #   shell: bash
-      #   run: |
-      #     rcp_commit=$(git log -1 --format=%B "${{ github.sha }}" | sed -n 's/^Merge \([0-9a-f]*\) into .*/\1/p' || echo "${{ github.sha }}")
-      #     echo "Checkout: $rcp_commit"
-      #     git checkout --detach "$rcp_commit"
-      #     echo "Submodules:"
-      #     git submodule status
       - name: Compute hashes
         id: vars
         shell: bash
@@ -127,7 +119,10 @@ jobs:
           docker run \
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark BENCH_OUT_DIR="/rcp/rcp/benchmark-results/${{ matrix.bench_type }}" BENCH_OPTS="${{ matrix.bench_type }}"
+            make benchmark \
+              BENCH_OUT_DIR="/rcp/rcp/benchmark-results/${{ matrix.bench_type }}" \
+              BENCH_OPTS="${{ matrix.bench_type }}" \
+              BENCH_ITER=1
       
       - name: Copy results
         run: |
@@ -142,6 +137,6 @@ jobs:
       - name: Archive results
         uses: actions/upload-artifact@v4
         with:
-          name: benchmarks
+          name: benchmarks-${{ matrix.bench_type }}
           path: |
             benchmark-results
