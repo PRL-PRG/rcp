@@ -9,7 +9,7 @@ RUN git config --global url."https://github.com/".insteadOf git@github.com:
 
 RUN --mount=type=ssh git clone git@github.com:PRL-PRG/r-compile-server.git /rsh && \
     git -C /rsh checkout --detach ${RSH_COMMIT} && \
-    git -C /rsh/external submodule update --init R
+    git -C /rsh submodule update --init --depth 1 external/R
 
 RUN cd /rsh && \
     ./tools/build-gnur.sh external/R
