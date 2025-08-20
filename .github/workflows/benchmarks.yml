@@ -22,7 +22,7 @@ jobs:
       - name: Info
         shell: bash
         run: |
-          echo "Github SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          echo "Github SHA: ${{ github.event.pull_request.head.sha || github.sha }}"
           echo "Log:"
           git log -1
           echo "Submodules:"
