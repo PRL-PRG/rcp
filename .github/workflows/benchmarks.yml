@@ -120,7 +120,7 @@ jobs:
             make benchmark \
               BENCH_OUT_DIR="/rcp/rcp/benchmark-results/${{ matrix.bench_type }}" \
               BENCH_OPTS="${{ matrix.bench_type }}" \
-              BENCH_ITER=1
+              BENCH_ITER=15
       
       - name: Copy results
         run: |
