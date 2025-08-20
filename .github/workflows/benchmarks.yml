@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Info
         shell: bash
         run: |
@@ -27,14 +29,14 @@ jobs:
           git log -1
           echo "Submodules:"
           git submodule status
-      - name: Checkout the proper commit
-        shell: bash
-        run: |
-          rcp_commit=$(git log -1 --format=%B "${{ github.sha }}" | sed -n 's/^Merge \([0-9a-f]*\) into .*/\1/p' || echo "${{ github.sha }}")
-          echo "Checkout: $rcp_commit"
-          git checkout --detach "$rcp_commit"
-          echo "Submodules:"
-          git submodule status
+      # - name: Checkout the proper commit
+      #   shell: bash
+      #   run: |
+      #     rcp_commit=$(git log -1 --format=%B "${{ github.sha }}" | sed -n 's/^Merge \([0-9a-f]*\) into .*/\1/p' || echo "${{ github.sha }}")
+      #     echo "Checkout: $rcp_commit"
+      #     git checkout --detach "$rcp_commit"
+      #     echo "Submodules:"
+      #     git submodule status
       - name: Compute hashes
         id: vars
         shell: bash
