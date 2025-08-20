@@ -106,12 +106,7 @@ jobs:
       - name: Execute benchmarks
         shell: bash
         run: |
-          BENCH_OPTS="--rsh"
-          if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
-            BENCH_OPTS="$BENCH_OPTS --bc"
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            BENCH_OPTS="$BENCH_OPTS --bc"
-          fi
+          BENCH_OPTS="--rsh --bc"
           docker run \
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
