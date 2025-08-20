@@ -106,10 +106,16 @@ jobs:
       - name: Execute benchmarks
         shell: bash
         run: |
+          BENCH_OPTS="--rsh"
+          if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
+            BENCH_OPTS="$BENCH_OPTS --bc"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            BENCH_OPTS="$BENCH_OPTS --bc"
+          fi
           docker run \
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results
+            make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results BENCH_OPTS="$BENCH_OPTS"
       
       - name: Copy results
         run: |
@@ -126,4 +132,4 @@ jobs:
         with:
           name: benchmarks
           path: |
-            benchmark-results/*.csv
+            benchmark-results/*
