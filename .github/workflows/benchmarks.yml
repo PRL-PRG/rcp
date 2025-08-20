@@ -22,8 +22,6 @@ jobs:
       - name: Info
         shell: bash
         run: |
-          # echo "Event Object:"
-          # echo "${{ toJson(github.event) }}"
           echo "Github SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           echo "Log:"
           git log -1
