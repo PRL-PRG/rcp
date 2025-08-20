@@ -92,6 +92,8 @@ jobs:
     needs: build-images
     strategy:
       max-parallel: 1
+      matrix:
+        bench_type: ["bc", "rsh"]
     permissions:
       contents: read
       packages: write
@@ -106,11 +108,10 @@ jobs:
       - name: Execute benchmarks
         shell: bash
         run: |
-          BENCH_OPTS="--rsh --bc"
           docker run \
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark BENCH_OUT_DIR=/rcp/rcp/benchmark-results BENCH_OPTS="$BENCH_OPTS"
+            make benchmark BENCH_OUT_DIR="/rcp/rcp/benchmark-results/${{ matrix.bench_type }}" BENCH_OPTS="${{ matrix.bench_type }}"
       
       - name: Copy results
         run: |
@@ -127,4 +128,4 @@ jobs:
         with:
           name: benchmarks
           path: |
-            benchmark-results/*
+            benchmark-results
