@@ -4,6 +4,7 @@
 
 typedef enum {
   RELOC_RUNTIME_SYMBOL,
+  RELOC_RUNTIME_SYMBOL_GOT,
   RELOC_RODATA,
   RELOC_RCP_PRECOMPILED,
   RELOC_RHO,
@@ -25,16 +26,17 @@ typedef struct {
   } val;
   uintptr_t offset;
   ptrdiff_t addend;
-  RELOC_KIND kind;
+  uint8_t kind;
   uint8_t size;
   uint8_t is_pc_relative;
+  uint8_t got_pos;
 } Hole; 
 
 typedef struct {
   size_t body_size;
-  const uint8_t * body;
+  uint8_t * body;
   size_t holes_size;
-  const Hole * holes;
+  Hole * holes;
   uint8_t alignment;
 } Stencil;
 
