@@ -98,8 +98,6 @@ jobs:
     needs: build-images
     strategy:
       max-parallel: 1
-      matrix:
-        bench_type: ["bc", "rsh"]
     permissions:
       contents: read
       packages: write
@@ -121,7 +119,7 @@ jobs:
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
             make benchmark \
-              BENCH_OUT_DIR="$BENCH_OUT_DIR/bc \
+              BENCH_OUT_DIR="$BENCH_OUT_DIR/bc" \
               BENCH_OPTS="--bc"
 
       - name: Execute benchmarks (rsh)
@@ -131,7 +129,7 @@ jobs:
             --name bench-run \
             ghcr.io/prl-prg/rcp:${{ github.sha }} \
             make benchmark \
-              BENCH_OUT_DIR="$BENCH_OUT_DIR/rsh \
+              BENCH_OUT_DIR="$BENCH_OUT_DIR/rsh" \
               BENCH_OPTS="--rsh" \
               BENCH_R=/usr/bin/R
 
