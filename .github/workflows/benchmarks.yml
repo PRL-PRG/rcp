@@ -108,7 +108,7 @@ jobs:
       BENCH_RESULT_NAME: benchmark-results
       # note: github workflow does not support variable expansion
       BENCH_OUT_DIR: /rcp/rcp/benchmark-results/${{ matrix.bench_type}}
-      BENCH_ITER: 1
+      BENCH_ITER: 15
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
