@@ -106,8 +106,8 @@ jobs:
     env:
       BENCH_DOCKER_CONTAINER: bench-run
       BENCH_RESULT_NAME: benchmark-results
-      BENCH_OUT_DIR: /rcp/rcp/${{ github.env.BENCH_RESULT_NAME }}/${{ matrix.bench_type}}
-      BENCH_ITER: 15
+      BENCH_OUT_DIR: /rcp/rcp/$BENCH_RESULT_NAME/${{ matrix.bench_type}}
+      BENCH_ITER: 1
     steps:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v2
@@ -140,4 +140,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmarks-${{ matrix.bench_type }}
-          path: ${{ github.env.BENCH_RESULT_NAME }}
+          path: ${{ env.BENCH_RESULT_NAME }}
