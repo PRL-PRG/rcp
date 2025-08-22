@@ -52,9 +52,9 @@ RUN cd /tmp \
   && wget https://cran.r-project.org/src/base/R-4/R-4.3.2.tar.gz \
   && tar -xzf R-4.3.2.tar.gz \
   && cd R-4.3.2 \
-  && ./configure \
+  && ./configure --prefix=/R-vanilla \
   && make -j$(nproc) \
   && make install \
   && cd / \
   && rm -rf /tmp/R-4.3.2* \
-  && R -e 'install.packages("microbenchmark", repos="https://cloud.r-project.org")'
+  && /R-vanilla/bin/R -e 'install.packages("microbenchmark", repos="https://cloud.r-project.org")'
