@@ -104,8 +104,9 @@ jobs:
       contents: read
       packages: write
     env:
-      DOCKER_BENCH_OUT_DIR: /rcp/rcp/benchmark-results
-      LOCAL_BENCH_OUT_DIR: benchmark-results
+      BENCH_DOCKER_CONTAINER: bench-run
+      BENCH_RESULT_NAME: benchmark-results
+      BENCH_OUT_DIR: /rcp/rcp/${{ github.env.BENCH_RESULT_NAME }}/${{ matrix.bench_type}}
       BENCH_ITER: 15
     steps:
       - name: Log in to GitHub Container Registry
@@ -119,26 +120,24 @@ jobs:
         shell: bash
         run: |
           docker run \
-          --name bench-run \
+          --name $BENCH_DOCKER_CONTAINER \
           ghcr.io/prl-prg/rcp:${{ github.sha }} \
           make benchmark \
-            BENCH_OUT_DIR="$DOCKER_BENCH_OUT_DIR/${{ matrix.bench_type }}" \
             BENCH_OPTS="--${{ matrix.bench_type }}" \
             ${{ matrix.bench_type == 'bc' && 'R_HOME=/R-vanilla' || '' }}
 
       - name: Copy results
         run: |
-          rm -fr $LOCAL_BENCH_OUT_DIR
-          mkdir -p $LOCAL_BENCH_OUT_DIR
-          docker cp bench-run:$DOCKER_BENCH_OUT_DIR .
+          rm -fr $BENCH_RESULT_NAME
+          mkdir -p $BENCH_RESULT_NAME
+          docker cp $BENCH_DOCKER_CONTAINER:$BENCH_OUT_DIR .
 
       - name: Cleanup
         if: always()
-        run: docker rm -f bench-run || true
+        run: docker rm -f $BENCH_DOCKER_CONTAINER || true
 
       - name: Archive results
         uses: actions/upload-artifact@v4
         with:
           name: benchmarks-${{ matrix.bench_type }}
-          path: |
-            $LOCAL_BENCH_OUT_DIR
+          path: ${{ github.env.BENCH_RESULT_NAME }}
