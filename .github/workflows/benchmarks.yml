@@ -98,11 +98,14 @@ jobs:
     needs: build-images
     strategy:
       max-parallel: 1
+      matrix:
+        bench_type: ['bc', 'rsh']
     permissions:
       contents: read
       packages: write
     env:
-      BENCH_OUT_DIR: /rcp/rcp/benchmark-results
+      DOCKER_BENCH_OUT_DIR: /rcp/rcp/benchmark-results
+      LOCAL_BENCH_OUT_DIR: benchmark-results
       BENCH_ITER: 15
     steps:
       - name: Log in to GitHub Container Registry
@@ -112,32 +115,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Execute benchmarks (bc)
+      - name: Execute benchmarks
         shell: bash
         run: |
           docker run \
-            --name bench-run \
-            ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark \
-              BENCH_OUT_DIR="$BENCH_OUT_DIR/bc" \
-              BENCH_OPTS="--bc"
-
-      - name: Execute benchmarks (rsh)
-        shell: bash
-        run: |
-          docker run \
-            --name bench-run \
-            ghcr.io/prl-prg/rcp:${{ github.sha }} \
-            make benchmark \
-              BENCH_OUT_DIR="$BENCH_OUT_DIR/rsh" \
-              BENCH_OPTS="--rsh" \
-              BENCH_R=/usr/bin/R
+          --name bench-run \
+          ghcr.io/prl-prg/rcp:${{ github.sha }} \
+          make benchmark \
+            BENCH_OUT_DIR="$DOCKER_BENCH_OUT_DIR/${{ matrix.bench_type }}" \
+            BENCH_OPTS="--${{ matrix.bench_type }}" \
+            ${{ matrix.bench_type == 'bc' && 'BENCH_R=/usr/bin/R' || '' }}
 
       - name: Copy results
         run: |
-          rm -fr benchmark-results
-          mkdir -p benchmark-results
-          docker cp bench-run:/rcp/rcp/benchmark-results .
+          rm -fr $LOCAL_BENCH_OUT_DIR
+          mkdir -p $LOCAL_BENCH_OUT_DIR
+          docker cp bench-run:$DOCKER_BENCH_OUT_DIR .
 
       - name: Cleanup
         if: always()
@@ -148,4 +141,4 @@ jobs:
         with:
           name: benchmarks-${{ matrix.bench_type }}
           path: |
-            benchmark-results
+            $LOCAL_BENCH_OUT_DIR
