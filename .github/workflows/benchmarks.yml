@@ -124,6 +124,8 @@ jobs:
           ghcr.io/prl-prg/rcp:${{ github.sha }} \
           make benchmark \
             BENCH_OPTS="--${{ matrix.bench_type }}" \
+            BENCH_OUT_DIR="$BENCH_OUT_DIR" \
+            BENCH_ITER="$BENCH_ITER" \
             ${{ matrix.bench_type == 'bc' && 'R_HOME=/R-vanilla' || '' }}
 
       - name: Copy results
