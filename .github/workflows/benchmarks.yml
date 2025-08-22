@@ -106,7 +106,8 @@ jobs:
     env:
       BENCH_DOCKER_CONTAINER: bench-run
       BENCH_RESULT_NAME: benchmark-results
-      BENCH_OUT_DIR: /rcp/rcp/$BENCH_RESULT_NAME/${{ matrix.bench_type}}
+      # note: github workflow does not support variable expansion
+      BENCH_OUT_DIR: /rcp/rcp/benchmark-results/${{ matrix.bench_type}}
       BENCH_ITER: 1
     steps:
       - name: Log in to GitHub Container Registry
@@ -131,8 +132,7 @@ jobs:
       - name: Copy results
         run: |
           rm -fr $BENCH_RESULT_NAME
-          mkdir -p $BENCH_RESULT_NAME
-          docker cp $BENCH_DOCKER_CONTAINER:$BENCH_OUT_DIR .
+          docker cp $BENCH_DOCKER_CONTAINER:$BENCH_OUT_DIR $BENCH_RESULT_NAME
 
       - name: Cleanup
         if: always()
