@@ -124,7 +124,7 @@ jobs:
           make benchmark \
             BENCH_OUT_DIR="$DOCKER_BENCH_OUT_DIR/${{ matrix.bench_type }}" \
             BENCH_OPTS="--${{ matrix.bench_type }}" \
-            ${{ matrix.bench_type == 'bc' && 'BENCH_R=/R-vanilla' || '' }}
+            ${{ matrix.bench_type == 'bc' && 'R_HOME=/R-vanilla' || '' }}
 
       - name: Copy results
         run: |
