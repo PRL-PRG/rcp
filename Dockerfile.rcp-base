@@ -46,15 +46,28 @@ RUN apt update -y \
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 14
 
-# install vanilla R
+# install vanilla R manually
 
-RUN cd /tmp \
-  && wget https://cran.r-project.org/src/base/R-4/R-4.3.2.tar.gz \
-  && tar -xzf R-4.3.2.tar.gz \
-  && cd R-4.3.2 \
-  && ./configure --prefix=/R-vanilla \
-  && make -j$(nproc) \
-  && make install \
-  && cd / \
-  && rm -rf /tmp/R-4.3.2* \
-  && /R-vanilla/bin/R -e 'install.packages("microbenchmark", repos="https://cloud.r-project.org")'
+# ARG R_VERSION=4.3.2
+#
+# flags from the R CMD config on ubuntu 24.04 and r-base 4.3.3-2build2
+# ARG CFLAGS="-O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -Wdate-time -D_FORTIFY_SOURCE=3"
+# ARG FFLAGS="-O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fstack-protector-strong -fstack-clash-protection -fcf-protection"
+# ARG FCFLAGS="-O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fstack-protector-strong -fstack-clash-protection -fcf-protection"
+# ARG LDFLAGS="-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro"
+#
+# RUN set -eux; \
+#   cd /tmp \
+#   && wget https://cran.r-project.org/src/base/R-${R_VERSION%%.*}/R-${R_VERSION}.tar.gz \
+#   && tar -xzf R-${R_VERSION}.tar.gz \
+#   && cd R-${R_VERSION} \
+#   && CFLAGS="$CFLAGS" LDFLAGS="$LDFLAGS" FFLAGS="$FFLAGS" FCFLAGS="$FCFLAGS" ./configure --prefix=/R-vanilla \
+#   && make -j"$(nproc)" \
+#   && make install \
+#   && cd / \
+#   && rm -rf /tmp/R-${R_VERSION}* \
+#   && /R-vanilla/bin/R -e 'install.packages("microbenchmark", repos="https://cloud.r-project.org")'
+
+# install vanilla R which comes with Ubuntu
+RUN apt install -y r-base && \
+  R -e 'install.packages("microbenchmark", repos="https://cloud.r-project.org")'
