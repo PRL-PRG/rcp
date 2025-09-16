@@ -1,8 +1,10 @@
-DOCKER_IMAGE_ORG := prl-prg
+DOCKER_IMAGE_ORG := ghcr.io/prl-prg
 DOCKER_BUILD_CMD := DOCKER_BUILDKIT=1 docker build --ssh default
 
 RSH_COMMIT ?= $(shell git -C external/rsh rev-parse HEAD)
 RCP_COMMIT ?= $(shell git rev-parse HEAD) 
+
+all: docker-rcp
 
 .PHONY: docker-rcp-base
 docker-rcp-base:
