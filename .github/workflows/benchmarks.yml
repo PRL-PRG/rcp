@@ -127,7 +127,7 @@ jobs:
             BENCH_OPTS="--${{ matrix.bench_type }}" \
             BENCH_OUT_DIR="$BENCH_OUT_DIR" \
             BENCH_ITER="$BENCH_ITER" \
-            ${{ matrix.bench_type == 'bc' && 'R_HOME=/R-vanilla' || '' }}
+            ${{ matrix.bench_type == 'bc' && 'R=/usr/bin/R' || '' }}
 
       - name: Copy results
         run: |

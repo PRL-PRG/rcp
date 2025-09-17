@@ -14,5 +14,6 @@ RUN --mount=type=ssh git clone git@github.com:PRL-PRG/r-compile-server.git /rsh 
 RUN cd /rsh && \
     bash -x ./tools/build-gnur.sh external/R
 
-ENV R_HOME=/rsh/external/R
-ENV PATH="${PATH}:${R_HOME}/bin"
+ENV RSH_R_HOME=/rsh/external/R
+
+RUN "$RSH_R_HOME/bin/R" -e 'install.packages("microbenchmark", repos="https://cloud.r-project.org")'

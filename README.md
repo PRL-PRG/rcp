@@ -1,6 +1,6 @@
 # Copy and Patch JIT compilation for R
 
-This repository contains the code neccessary to run Copy and Patch JIT for R.
+This repository contains the code necessary to run Copy and Patch JIT for R.
 
 ## Installation
 

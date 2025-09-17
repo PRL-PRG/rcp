@@ -12,8 +12,8 @@ EXTRACTED_DIR = $(BUILD_DIR)/extracted
 R_PACKAGE = $(BUILD_DIR)/rcp_1.0.0.0000.tar.gz
 R_PACKAGE_SOURCE = $(shell find $(ROOT_DIR)/r-pkg/*)
 RSH_HOME = $(ROOT_DIR)/../external/rsh/client/rsh
-R_HOME ?= $(ROOT_DIR)/../external/rsh/external/R
-R_LIB = $(R_HOME)/library/rcp/libs/rcp.so
+RSH_R_HOME ?= $(ROOT_DIR)/../external/rsh/external/R
+RCP_LIB = $(RSH_R_HOME)/library/rcp/libs/rcp.so
 
 # 0 = relative addressing, 1 = relative addressing with GOT where needed, 2 = absolute addressing
 RELOC_MODEL ?= 1
@@ -56,7 +56,7 @@ endif
 $(STENCILS_OBJ): stencils/stencils.c
 	@echo "Building stencils..."
 	mkdir -p build
-	$(CC) stencils/stencils.c -o $(STENCILS_OBJ) -c -ffunction-sections -fno-stack-protector -fcf-protection=none -fno-asynchronous-unwind-tables -Os -fno-pic -mcmodel=$(MCMODEL) -fno-math-errno -fno-trapping-math -fno-merge-constants -fno-jump-tables -fno-align-functions -fno-align-jumps -fno-align-labels -I$(R_HOME)/include -I$(RSH_HOME)/src/bc2c $(DEFINE_FLAGS) $(C_FLAGS_ADDITIONAL)
+	$(CC) stencils/stencils.c -o $(STENCILS_OBJ) -c -ffunction-sections -fno-stack-protector -fcf-protection=none -fno-asynchronous-unwind-tables -Os -fno-pic -mcmodel=$(MCMODEL) -fno-math-errno -fno-trapping-math -fno-merge-constants -fno-jump-tables -fno-align-functions -fno-align-jumps -fno-align-labels -I$(RSH_R_HOME)/include -I$(RSH_HOME)/src/bc2c $(DEFINE_FLAGS) $(C_FLAGS_ADDITIONAL)
 # -fno-align-loops
 
 $(EXTRACTOR_BIN): extractor/extract_stencils.c
@@ -72,17 +72,17 @@ $(R_PACKAGE): $(STENCILS_OBJ) $(EXTRACTOR_BIN)# $(R_PACKAGE_SOURCE)
 	ln -sfn $(EXTRACTED_DIR) $(ROOT_DIR)/r-pkg/src/stencils
 	ln -s $(RSH_HOME)/src/bc2c/runtime_internals.h $(ROOT_DIR)/r-pkg/src/runtime_internals.h
 	ln -s $(ROOT_DIR)/rcp_common.h $(ROOT_DIR)/r-pkg/src/rcp_common.h
-	cd $(BUILD_DIR) && $(R_HOME)/bin/R CMD build ../r-pkg
+	cd $(BUILD_DIR) && $(RSH_R_HOME)/bin/R CMD build ../r-pkg
 	rm -f $(ROOT_DIR)/r-pkg/src/rcp_common.h
 	rm -f $(ROOT_DIR)/r-pkg/src/runtime_internals.h
 	rm -f $(ROOT_DIR)/r-pkg/src/stencils
 
-$(R_LIB): $(R_PACKAGE)
+$(RCP_LIB): $(R_PACKAGE)
 	@echo "Installing package..."
-	cd build && MCMODEL=$(MCMODEL) SPECIALIZE_STEPFOR=$(SPECIALIZE_STEPFOR) SPECIALIZE_MATH1=$(SPECIALIZE_MATH1) ALIGNMENT_LABELS=$(ALIGNMENT_LABELS) ALIGNMENT_JUMPS=$(ALIGNMENT_JUMPS) ALIGNMENT_LOOPS=$(ALIGNMENT_LOOPS) $(R_HOME)/bin/R CMD INSTALL rcp_1.0.0.0000.tar.gz
+	cd build && MCMODEL=$(MCMODEL) SPECIALIZE_STEPFOR=$(SPECIALIZE_STEPFOR) SPECIALIZE_MATH1=$(SPECIALIZE_MATH1) ALIGNMENT_LABELS=$(ALIGNMENT_LABELS) ALIGNMENT_JUMPS=$(ALIGNMENT_JUMPS) ALIGNMENT_LOOPS=$(ALIGNMENT_LOOPS) $(RSH_R_HOME)/bin/R CMD INSTALL rcp_1.0.0.0000.tar.gz
 
 .PHONY: install
-install: $(R_LIB)
+install: $(RCP_LIB)
 
 
 BENCH_ITER ?= 15
@@ -95,14 +95,14 @@ TXT_NORM = \033[0m
 TXT_GREEN = \033[0;32m
 TXT_RED = \033[0;31m
 
-R ?= $(R_HOME)/bin/R
+R ?= $(RSH_R_HOME)/bin/R
 BENCH_DIR = $(RSH_HOME)/inst/benchmarks
 HARNESS_BIN = harness.R
 FILTER ?=
 
 .PHONY: run
 run: install
-	@$(R_HOME)/bin/R
+	@$(RSH_R_HOME)/bin/R
 
 .PHONY: benchmark
 benchmark: 
