@@ -25,13 +25,15 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line,
 extern RCNTXT *R_GlobalContext; /* The global context */
 extern SEXP R_ReturnedValue;	/* Slot for return-ing values */
 
+#define NOP_BCOP BCMISMATCH_BCOP /* Use BCMISMATCH for NOP operations */
+
 static const Stencil NOP_STENCIL = {
 	.body_size = 0,
 	.body = NULL,
 	.holes_size = 0,
 	.holes = NULL,
 	.alignment = 1,
-	.name = "NOP_STENCIL"};
+	.name = "NOP"};
 
 static int rcp_gdb_jit_enabled = 0;
 static int rcp_perf_jit_enabled = 0;
@@ -588,19 +590,15 @@ static const Stencil *get_stencil(RCP_BC_OPCODES opcode, const int *imms,
 				switch (TYPEOF(constant))
 				{
 					case REALSXP:
-						DEBUG_PRINT("Using specialized version of LDCONST_OP: REAL\n");
 						return &stencil_set[0];
 					case INTSXP:
-						DEBUG_PRINT("Using specialized version of LDCONST_OP: INT\n");
 						return &stencil_set[1];
 					case LGLSXP:
-						DEBUG_PRINT("Using specialized version of LDCONST_OP: LGL\n");
 						return &stencil_set[2];
 					default:
 						break;
 				}
 			}
-			DEBUG_PRINT("Using specialized version of LDCONST_OP: SEXP\n");
 			return &stencil_set[3];
 		}
 		break;
@@ -1031,6 +1029,66 @@ static void peephole_goto(int bytecode[], int bytecode_size, SEXP *constpool)
 	}
 }
 
+static void peephole_getvar(int bytecode[], int bytecode_size, SEXP *constpool, const BasicBlock *bbs)
+{
+	int stage = 0;
+	SEXP setvar_symbol;
+	int setvar_bb;
+	int* pos_pop;
+
+	for (int i = 0; i < bytecode_size; i += RCP_BC_ARG_CNT[bytecode[i]] + 1)
+	{
+		RCP_BC_OPCODES opcode = bytecode[i];
+		int *imms = &bytecode[i + 1];
+
+		if (stage == 0 && opcode == SETVAR_BCOP)
+		{
+			stage = 1;
+			setvar_bb = bbs[i].bytecode_start;
+			setvar_symbol = constpool[imms[0]];
+		}
+		else if (stage == 1 && opcode == POP_BCOP && setvar_bb == bbs[i].bytecode_start)
+		{
+			stage = 2;
+			pos_pop = &bytecode[i];
+		}
+		else if (stage == 2 && opcode == GETVAR_BCOP)
+		{
+			stage = 3;
+		}
+		else
+		{
+			stage = 0;
+		}
+
+		if (stage == 3)
+		{
+			SEXP getvar_symbol = constpool[imms[0]];
+			int* pos_getvar = &bytecode[i];
+			int getvar_bb = bbs[i].bytecode_start;
+
+			if (getvar_symbol == setvar_symbol)
+			{
+				if(getvar_bb == setvar_bb)
+				{
+					DEBUG_PRINT("Peephole optimization: Replacing SETVAR+POP+GETVAR with just SETVAR for variable '%s'\n", CHAR(PRINTNAME(setvar_symbol)));
+
+					for(int i = 0; i < RCP_BC_ARG_CNT[POP_BCOP] + 1; i++)
+						pos_pop[i] = NOP_BCOP;
+
+					for(int i = 0; i < RCP_BC_ARG_CNT[GETVAR_BCOP] + 1; i++)
+						pos_getvar[i] = NOP_BCOP;
+				}
+				else
+				{
+					//TODO uncoditional jump over GETVAR
+				}
+			}
+			stage = 0;
+		}
+	}
+}
+
 typedef struct PluginStencil
 {
 	int pos;
@@ -1142,7 +1200,7 @@ static rcp_exec_ptrs copy_patch_internal(int bytecode[], int bytecode_size,
 		const int *imms = &bytecode[i + 1];
 		const Stencil *stencil = get_stencil(bytecode[i], imms, constpool);
 		// DEBUG_PRINT("Opcode: %s\n", OPCODES_NAMES[bytecode[i]]);
-		if (stencil == NULL || stencil->body_size == 0)
+		if (stencil == NULL)
 			error("Opcode not implemented: %s\n", OPCODES_NAMES[bytecode[i]]);
 
 		switch (bytecode[i])
@@ -1559,7 +1617,7 @@ static void bytecode_info(const int *bytecode, int bytecode_size,
 	for (int i = 0; i < bytecode_size; ++i)
 	{
 		DEBUG_PRINT("%d:\tOpcode: %d = %s\n", i, bytecode[i],
-					OPCODES_NAMES[bytecode[i]]);
+					get_stencil(bytecode[i], &bytecode[i+1], consts)->name);
 		for (size_t j = 0; j < RCP_BC_ARG_CNT[bytecode[i]]; j++)
 		{
 			DEBUG_PRINT("\tIMM: %d\n", bytecode[i + 1 + j]);
@@ -1954,11 +2012,13 @@ static SEXP copy_patch_bc(SEXP bcode, int recursive, CompilationStats *stats,
 		}
 	}
 
-	bytecode_info(bytecode, bytecode_size, consts, consts_size);
 	peephole_goto(bytecode, bytecode_size, consts);
 
 	const void *vmax = vmaxget();
 	BasicBlock *bbs = build_basic_blocks(bytecode, bytecode_size, consts);
+
+	peephole_getvar(bytecode, bytecode_size, consts, bbs);
+	bytecode_info(bytecode, bytecode_size, consts, consts_size);
 
 	PluginStencils plugins = {0};
 
@@ -2940,6 +3000,8 @@ SEXP rcp_init(void)
 #endif
 
 	save_original_cmpfun();
+
+	stencils[NOP_BCOP] = &NOP_STENCIL;
 
 	DEBUG_PRINT("Allignment: LABELS=%d, JUMPS=%d, LOOPS=%d, UNLIKELY_LABELS=%d, "
 				"UNLIKELY_LOOPS=%d\n",
