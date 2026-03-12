@@ -1077,27 +1077,29 @@ static void peephole_goto(int bytecode[], int bytecode_size, SEXP *constpool)
 static void peephole_getvar(int bytecode[], int bytecode_size, SEXP *constpool, const BasicBlock *bbs)
 {
 	int stage = 0;
+	int setvar_global;
 	SEXP setvar_symbol;
 	int setvar_bb;
-	int* pos_pop;
+	int *pos_pop;
 
 	for (int i = 0; i < bytecode_size; i += RCP_BC_ARG_CNT[bytecode[i]] + 1)
 	{
 		RCP_BC_OPCODES opcode = bytecode[i];
 		int *imms = &bytecode[i + 1];
 
-		if (stage == 0 && opcode == SETVAR_BCOP)
+		if (stage == 0 && (opcode == SETVAR_BCOP || opcode == SETVAR2_BCOP))
 		{
 			stage = 1;
 			setvar_bb = bbs[i].bytecode_start;
 			setvar_symbol = constpool[imms[0]];
+			setvar_global = opcode == SETVAR2_BCOP;
 		}
 		else if (stage == 1 && opcode == POP_BCOP && setvar_bb == bbs[i].bytecode_start)
 		{
 			stage = 2;
 			pos_pop = &bytecode[i];
 		}
-		else if (stage == 2 && opcode == GETVAR_BCOP)
+		else if (stage == 2 && (opcode == GETVAR_BCOP || opcode == GETVAR_MISSOK_BCOP))
 		{
 			stage = 3;
 		}
@@ -1109,24 +1111,24 @@ static void peephole_getvar(int bytecode[], int bytecode_size, SEXP *constpool, 
 		if (stage == 3)
 		{
 			SEXP getvar_symbol = constpool[imms[0]];
-			int* pos_getvar = &bytecode[i];
+			int *pos_getvar = &bytecode[i];
 			int getvar_bb = bbs[i].bytecode_start;
 
 			if (getvar_symbol == setvar_symbol)
 			{
-				if(getvar_bb == setvar_bb)
+				if (getvar_bb == setvar_bb)
 				{
 					DEBUG_PRINT("Peephole optimization: Replacing SETVAR+POP+GETVAR with just SETVAR for variable '%s'\n", CHAR(PRINTNAME(setvar_symbol)));
 
-					for(int i = 0; i < RCP_BC_ARG_CNT[POP_BCOP] + 1; i++)
+					for (int i = 0; i < RCP_BC_ARG_CNT[POP_BCOP] + 1; i++)
 						pos_pop[i] = NOP_BCOP;
 
-					for(int i = 0; i < RCP_BC_ARG_CNT[GETVAR_BCOP] + 1; i++)
+					for (int i = 0; i < RCP_BC_ARG_CNT[GETVAR_BCOP] + 1; i++)
 						pos_getvar[i] = NOP_BCOP;
 				}
 				else
 				{
-					//TODO uncoditional jump over GETVAR
+					// TODO uncoditional jump over GETVAR
 				}
 			}
 			stage = 0;
@@ -1700,7 +1702,7 @@ static void bytecode_info(const int *bytecode, int bytecode_size,
 	for (int i = 0; i < bytecode_size; ++i)
 	{
 		DEBUG_PRINT("%d:\tOpcode: %d = %s\n", i, bytecode[i],
-					get_stencil(bytecode[i], &bytecode[i+1], consts)->name);
+					get_stencil(bytecode[i], &bytecode[i + 1], consts)->name);
 		for (size_t j = 0; j < RCP_BC_ARG_CNT[bytecode[i]]; j++)
 		{
 			DEBUG_PRINT("\tIMM: %d\n", bytecode[i + 1 + j]);
