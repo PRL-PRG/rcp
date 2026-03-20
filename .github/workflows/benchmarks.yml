@@ -113,6 +113,7 @@ jobs:
         run: |
           # Run the discovery script and build a compact single-line JSON for the matrix
           json=$(bash rcp/tests/list-tests.sh | tr ' ' '\n' | jq -R . | jq -sc '{"test": .}')
+          echo "Discovered tests: $json"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
 
   test:
