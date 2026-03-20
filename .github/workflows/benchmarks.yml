@@ -111,9 +111,9 @@ jobs:
         id: set-matrix
         shell: bash
         run: |
-          # Run the discovery script and convert to JSON array
-          subdirs=$(bash rcp/tests/list-tests.sh | xargs -n1 | jq -R . | jq -s .)
-          echo "matrix={\"test\":$subdirs}" >> "$GITHUB_OUTPUT"
+          # Run the discovery script and build a compact single-line JSON for the matrix
+          json=$(bash rcp/tests/list-tests.sh | tr ' ' '\n' | jq -R . | jq -sc '{"test": .}')
+          echo "matrix=$json" >> "$GITHUB_OUTPUT"
 
   test:
     name: Test (${{ matrix.test }})
