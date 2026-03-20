@@ -15,6 +15,8 @@ jobs:
   build-images:
     name: Images
     runs-on: ubuntu-latest
+    outputs:
+      test-matrix: ${{ steps.set-matrix.outputs.matrix }}
     permissions:
       contents: read
       packages: write
@@ -96,22 +98,10 @@ jobs:
           cache-from: type=gha,scope=rcp
           cache-to: type=gha,mode=max,scope=rcp
 
-  discover-tests:
-    name: Discover Tests
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      
-      - name: Extract test subdirectories
+      - name: Discover test subdirectories
         id: set-matrix
         shell: bash
         run: |
-          # Run the discovery script and build a compact single-line JSON for the matrix
           json=$(bash rcp/tests/list-tests.sh | tr ' ' '\n' | jq -R . | jq -sc '{"test": .}')
           echo "Discovered tests: $json"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
@@ -119,10 +109,11 @@ jobs:
   test:
     name: Test (${{ matrix.test }})
     runs-on: ubuntu-latest
-    needs: [build-images, discover-tests]
+    needs: build-images
     strategy:
+      fail-fast: false
       max-parallel: 1
-      matrix: ${{ fromJson(needs.discover-tests.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.build-images.outputs.test-matrix) }}
     permissions:
       contents: read
       packages: read
