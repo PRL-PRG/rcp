@@ -493,8 +493,48 @@ RCP_OP(LDTRUE,
 RCP_OP(LDFALSE,
 	   Rsh_LdFalse(stack);)
 
+#ifdef RCP_PEEPHOLE_GETVAR
+static ALWAYS_INLINE void Rsh_get_var_onstack(Value *res, SEXP symbol,
+                                              Rboolean keepmiss, SEXP rho) {
+  RSH_PC_INC(getvar);
+  R_Visible = TRUE;
+
+  if (res->tag != 0) {
+    return;
+  }
+
+  SEXP value = VAL_SXP(*res);
+  int type = TYPEOF(value);
+
+  if (TYPEOF(value) == PROMSXP && PROMISE_IS_EVALUATED(value)) {
+    Rsh_evaluated_promise_to_value(res, value);
+    return;
+  }
+
+  switch (type) {
+  case SYMSXP:
+  case PROMSXP:
+    Rsh_do_get_var(res, symbol, value, keepmiss, rho);
+  }
+}
+
+RCP_OP_EX(GETVAR, 0)
+{
+	PUSH_VAL(1);
+	Rsh_GetVar(stack, GETCONST_IMM(0), GETCONSTCELL_IMM(0), GET_RHO());
+	NEXT;
+}
+
+RCP_OP_EX(GETVAR, 1)
+{
+	Rsh_get_var_onstack(stack, GETCONST_IMM(0), FALSE, GET_RHO());
+	NEXT;
+}
+
+#else
 RCP_OP(GETVAR,
 	   Rsh_GetVar(stack, GETCONST_IMM(0), GETCONSTCELL_IMM(0), GET_RHO());)
+#endif
 
 RCP_OP(DDVAL,
 	   Rsh_DdVal(stack, GETCONST_IMM(0), GETCONSTCELL_IMM(0), GET_RHO());)
@@ -799,8 +839,26 @@ RCP_OP(OR1ST,
 RCP_OP(OR2ND,
 	   Rsh_Or2nd(stack, GETCONST_IMM(0));)
 
+
+
+#ifdef RCP_PEEPHOLE_GETVAR
+RCP_OP_EX(GETVAR_MISSOK, 0)
+{
+	PUSH_VAL(1);
+	Rsh_GetVarMissOk(stack, GETCONST_IMM(0), GETCONSTCELL_IMM(0), GET_RHO());
+	NEXT;
+}
+
+RCP_OP_EX(GETVAR_MISSOK, 1)
+{
+	Rsh_get_var_onstack(stack, GETCONST_IMM(0), TRUE, GET_RHO());
+	NEXT;
+}
+
+#else
 RCP_OP(GETVAR_MISSOK,
 	   Rsh_GetVarMissOk(stack, GETCONST_IMM(0), GETCONSTCELL_IMM(0), GET_RHO());)
+#endif
 
 RCP_OP(DDVAL_MISSOK,
 	   Rsh_DdValMissOk(stack, GETCONST_IMM(0), GETCONSTCELL_IMM(0), GET_RHO());)
