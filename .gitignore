@@ -6,6 +6,7 @@
 .vscode/
 perf.data
 /rcp/benchmark-results
+/rcp/profile-results
 /rcp/src/stencils/.stencils_flags
 /rcp/tests/perf/*.old
 /rcp/tests/perf/*.data

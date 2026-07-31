@@ -79,33 +79,6 @@ extern Rboolean RCP_STEPFOR_Fallback(Value *stack, BCell *cell, SEXP rho);
 		stack -= (n); \
 	} while (0)
 
-#ifdef PROFILE_STENCILS
-struct StencilProfileInfo
-{
-	size_t call_count;
-	size_t total_cycles;
-};
-extern struct StencilProfileInfo stencil_profile_info[];
-static inline uint64_t rdtsc(void)
-{
-	uint32_t lo, hi;
-	__asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-	return ((uint64_t)hi << 32) | lo;
-}
-#define PROFILING_START(opcode) uint64_t _profiling_start_time = rdtsc();
-#define PROFILING_END(opcode)                               \
-	do                                                      \
-	{                                                       \
-		uint64_t _profiling_end_time = rdtsc();             \
-		stencil_profile_info[opcode##_BCOP].call_count++;   \
-		stencil_profile_info[opcode##_BCOP].total_cycles += \
-			_profiling_end_time - _profiling_start_time;    \
-	} while (0)
-#else
-#define PROFILING_START(opcode) ((void)0)
-#define PROFILING_END(opcode)	((void)0)
-#endif
-
 #define RET_T Value
 
 // Macros to define stencil functions
@@ -143,13 +116,11 @@ static inline uint64_t rdtsc(void)
 		PROLOGUE;                                                                      \
 		TRACE_PRINT(__FUNCTION__);                                                     \
 		TRACE_PRINT("\tSTART\n");                                                      \
-		PROFILING_START(name);                                                         \
 		PUSH_VAL(RCP_BC_STACK_EFFECT_##name > 0 ? RCP_BC_STACK_EFFECT_##name : 0);     \
 		body                                                                           \
 			POP_VAL(RCP_BC_STACK_EFFECT_##name < 0 ? -RCP_BC_STACK_EFFECT_##name : 0); \
 		TRACE_PRINT(__FUNCTION__);                                                     \
 		TRACE_PRINT("\tDONE\n");                                                       \
-		PROFILING_END(name);                                                           \
 		continuation                                                                   \
 			NEXT;                                                                      \
 	}
@@ -258,11 +229,29 @@ static __attribute__((always_inline)) inline int rcp_binding_type(SEXP binding_c
 
 /**************************************************************************/
 
-RCP_STENCIL_FUNCTION(_RCP_CUSTOM_COVERAGE)
+RCP_STENCIL_FUNCTION(_RCP_CUSTOM_COUNTER_32_REL)
 {
-	PROLOGUE;
-	int *coverage_counter = (int *)GETCUSTOM();
-	*coverage_counter += 1;
+	int *counter = (int *)GETCUSTOM();
+	*counter += 1;
+	NEXT;
+}
+
+RCP_STENCIL_FUNCTION(_RCP_CUSTOM_COUNTER_64_REL)
+{
+    uint64_t *counter = (uint64_t *)GETCUSTOM();
+    *counter += 1;
+    NEXT;
+}
+
+RCP_STENCIL_FUNCTION(_RCP_CUSTOM_TSC_SUB)
+{
+	*(uint64_t *)GETCUSTOM() -= __builtin_ia32_rdtsc();
+	NEXT;
+}
+
+RCP_STENCIL_FUNCTION(_RCP_CUSTOM_TSC_ADD)
+{
+    *(uint64_t *)GETCUSTOM() += __builtin_ia32_rdtsc();
 	NEXT;
 }
 

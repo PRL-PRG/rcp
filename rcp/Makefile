@@ -41,3 +41,21 @@ benchmark:
 	@RSH_HOME=$(RSH_HOME) R_HOME=$(R_HOME) ./inst/benchmarks/run-benchmarks.sh \
 		--runs $(BENCH_ITER) --parallel $(BENCH_PARALLEL) \
 		$(if $(BENCH_OUT_DIR),--output $(BENCH_OUT_DIR))
+
+# Build RCP with per-stencil profiling and export the counters for the whole
+# benchmark suite as CSV. A clean rebuild is required because toggling
+# PROFILE_STENCILS does not, on its own, retrigger compilation of unchanged
+# sources. RUNS controls how many times each benchmark is executed (default 1);
+# FILTER restricts to benchmarks whose filename contains the substring;
+# PROFILE_OUT_DIR is where the CSVs land.
+RUNS ?= 1
+PROFILE_OUT_DIR ?= profile-results
+FILTER ?=
+
+.PHONY: profile
+profile:
+	$(MAKE) clean
+	PROFILE_STENCILS=1 $(MAKE) install
+	RSH_HOME=$(RSH_HOME) R_HOME=$(R_HOME) ./inst/benchmarks/run-profile.sh \
+		--runs $(RUNS) --output $(PROFILE_OUT_DIR) \
+		$(if $(FILTER),--filter $(FILTER))

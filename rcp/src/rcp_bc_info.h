@@ -137,6 +137,20 @@ typedef enum
 	NUM_OPCODES
 } RCP_BC_OPCODES;
 
+#ifdef PROFILE_STENCILS
+// Per-opcode profiling counters. Defined here so both compile.c (which owns the
+// stencil_profile_info[] array and reads it in C_rcp_get_profiling) and the
+// profiling plugin stencils in stencils.c agree on the layout. tsc_start is
+// scratch: the TSC_BEGIN plugin saves rdtsc() into it before an instruction and
+// the TSC_END plugin reads it back to accumulate the elapsed cycles.
+struct StencilProfileInfo
+{
+	uint64_t call_count;
+	uint64_t total_cycles;
+	uint64_t tsc_start;
+};
+#endif
+
 static uint8_t RCP_BC_ARG_CNT[] __attribute__((unused)) = {
 	/*BCMISMATCH.OP*/ 0,
 	/*RETURN.OP*/ 0,

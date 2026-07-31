@@ -103,6 +103,23 @@ SPECIALIZE_STEPFOR ?= 1
 SPECIALIZE_SWITCH ?= 1
 SPECIALIZE_MAKEPROM ?= 1
 
+# Per-stencil profiling counters (PROFILE_STENCILS). Off by default; `make
+# profile' turns it on. When enabled, every stencil records its call count and
+# cycle total (rdtsc), retrievable from R via rcp:::rcp_get_profiling().
+#
+# The macro must reach BOTH the stencils/shared-lib builds (plain `make', which
+# picks up CFLAGS from here) AND the package compile.c (R CMD INSTALL ignores a
+# Makevars CFLAGS, so src/Makevars adds it to PKG_CFLAGS off the same toggle).
+# `export' propagates the value to the R CMD INSTALL child and its sub-makes.
+# NOTE: toggling this needs a clean rebuild -- a bare CFLAGS change does not
+# retrigger compilation of otherwise-unchanged sources (`make profile' cleans).
+PROFILE_STENCILS ?= 0
+export PROFILE_STENCILS
+ifneq ($(PROFILE_STENCILS),0)
+  CFLAGS += -DPROFILE_STENCILS
+  CXXFLAGS += -DPROFILE_STENCILS
+endif
+
 EXTRACTOR_BIN = extractor
 EXTRACTOR_DIR = extractor
 EXTRACTOR = $(EXTRACTOR_DIR)/$(EXTRACTOR_BIN)

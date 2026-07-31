@@ -51,13 +51,12 @@ static int compile_promises = RCP_COMPILE_PROMISES;
 #endif
 
 #ifdef PROFILE_STENCILS
-struct StencilProfileInfo
-{
-	size_t call_count;
-	size_t total_cycles;
-};
-static struct StencilProfileInfo
-	stencil_profile_info[sizeof(OPCODES_NAMES) / sizeof(*OPCODES_NAMES)];
+// struct StencilProfileInfo lives in rcp_bc_info.h so the profiling plugin
+// stencils share its layout. OPCODES_NAMES is only an incomplete extern array
+// here (defined in shared/opcodes.c) so sizeof() does not work; size by the
+// NUM_OPCODES enum sentinel. Indexed by opcode, matching the per-op data
+// pointers profile_instructions() hands to the profiling plugin stencils.
+static struct StencilProfileInfo stencil_profile_info[NUM_OPCODES];
 #endif
 
 // Used as a hint where to map address space close to R internals to allow
@@ -1116,6 +1115,10 @@ typedef struct PluginStencil
 	int pos;
 	const Stencil *stencil;
 	void *data;
+	// 0: emitted just before the instruction body at `pos` (the default, and
+	// where a jump to `pos` lands). 1: emitted just after the body, so it only
+	// runs when the instruction falls through (used for the profiling TSC_END).
+	int after;
 } PluginStencil;
 
 typedef struct PluginStencils
@@ -1245,12 +1248,16 @@ static rcp_exec_ptrs copy_patch_internal(int bytecode[], int bytecode_size,
 			inst_start[i] = (uint8_t *)insts_size;
 		}
 
+		// Before-plugins: emitted ahead of the instruction body (inst_start[i]
+		// points here, so they also run when the instruction is jumped to).
+		int plugin_group_start = p;
 		for (; p < plugin_size && plugins[p].pos == i; p++)
 		{
-			const PluginStencil *plugin = &plugins[p];
-			const Stencil *plugin_stencil = plugin->stencil;
-			size_t aligned_size = align_to_higher(insts_size, plugin_stencil->alignment);
-			insts_size = aligned_size + plugin_stencil->body_size;
+			if (plugins[p].after)
+				continue;
+			const Stencil *plugin_stencil = plugins[p].stencil;
+			size_t plugin_aligned = align_to_higher(insts_size, plugin_stencil->alignment);
+			insts_size = plugin_aligned + plugin_stencil->body_size;
 		}
 
 		size_t aligned_size = align_to_higher(insts_size, stencil->alignment);
@@ -1258,6 +1265,17 @@ static rcp_exec_ptrs copy_patch_internal(int bytecode[], int bytecode_size,
 
 		insts_size = aligned_size + stencil->body_size;
 		bytecode_lut[count_opcodes++] = i;
+
+		// After-plugins: emitted right after the body, so they run only on
+		// fall-through. p has already advanced past the whole pos==i group.
+		for (int q = plugin_group_start; q < p; q++)
+		{
+			if (!plugins[q].after)
+				continue;
+			const Stencil *plugin_stencil = plugins[q].stencil;
+			size_t plugin_aligned = align_to_higher(insts_size, plugin_stencil->alignment);
+			insts_size = plugin_aligned + plugin_stencil->body_size;
+		}
 
 		for (size_t j = 0; j < stencil->holes_size; ++j)
 		{
@@ -1502,8 +1520,13 @@ static rcp_exec_ptrs copy_patch_internal(int bytecode[], int bytecode_size,
 		uint8_t *pos = inst_start[bc_pos];
 		// pos is already aligned in context of native code generation, but stencils might require additional alignment, so we need to align it again here
 
+		// Before-plugins (mirror the layout loop's ordering: before-plugins,
+		// then the body, then after-plugins).
+		int plugin_group_start = p;
 		for (; p < plugin_size && plugins[p].pos == bc_pos; p++)
 		{
+			if (plugins[p].after)
+				continue;
 			DEBUG_PRINT("Patching plugin %d at bytecode position %d\n", p, bc_pos);
 			const PluginStencil *plugin = &plugins[p];
 			const Stencil *plugin_stencil = plugin->stencil;
@@ -1525,6 +1548,23 @@ static rcp_exec_ptrs copy_patch_internal(int bytecode[], int bytecode_size,
 			patch(pos, pos, bc_pos, stencil, &stencil->holes[j], j, opargs, bc_pos + RCP_BC_ARG_CNT[bytecode[bc_pos]] + 1, smc_variants, &ctx);
 
 		pos += stencil->body_size;
+
+		// After-plugins: emitted right after the body.
+		for (int q = plugin_group_start; q < p; q++)
+		{
+			if (!plugins[q].after)
+				continue;
+			DEBUG_PRINT("Patching after-plugin %d at bytecode position %d\n", q, bc_pos);
+			const PluginStencil *plugin = &plugins[q];
+			const Stencil *plugin_stencil = plugin->stencil;
+
+			pos = (uint8_t *)align_to_higher((uintptr_t)pos, plugin_stencil->alignment);
+
+			memcpy(pos, plugin_stencil->body, plugin_stencil->body_size);
+			for (size_t k = 0; k < plugin_stencil->holes_size; ++k)
+				patch(pos, pos, bc_pos, plugin_stencil, &plugin_stencil->holes[k], k, opargs, bc_pos + RCP_BC_ARG_CNT[bytecode[bc_pos]] + 1, plugin->data, &ctx);
+			pos += plugin_stencil->body_size;
+		}
 	}
 
 #ifdef DEBUG_MODE
@@ -1733,7 +1773,7 @@ SEXP get_attribute(SEXP list, const char *attr_name)
 	return R_NilValue;
 }
 
-static PluginStencil *add_plugin_stencil_pos(PluginStencils *stencils, int pos, const Stencil *stencil, void *data)
+static PluginStencil *add_plugin_stencil_pos_ex(PluginStencils *stencils, int pos, const Stencil *stencil, void *data, int after)
 {
 	// Mark the array dirty if this position breaks the non-decreasing order, so
 	// the final sort can be skipped entirely when nothing was inserted out of
@@ -1753,9 +1793,15 @@ static PluginStencil *add_plugin_stencil_pos(PluginStencils *stencils, int pos, 
 	stencils->sparse_stencils[stencils->sparse_stencils_count].pos = pos;
 	stencils->sparse_stencils[stencils->sparse_stencils_count].stencil = stencil;
 	stencils->sparse_stencils[stencils->sparse_stencils_count].data = data;
+	stencils->sparse_stencils[stencils->sparse_stencils_count].after = after;
 	stencils->sparse_stencils_count++;
 
 	return &stencils->sparse_stencils[stencils->sparse_stencils_count - 1];
+}
+
+static PluginStencil *add_plugin_stencil_pos(PluginStencils *stencils, int pos, const Stencil *stencil, void *data)
+{
+	return add_plugin_stencil_pos_ex(stencils, pos, stencil, data, 0);
 }
 
 static void add_plugin_stencil_instr(PluginStencils *stencils, int bytecode[], int bytecode_size, RCP_BC_OPCODES instr, const Stencil *stencil, void *data)
@@ -1766,6 +1812,30 @@ static void add_plugin_stencil_instr(PluginStencils *stencils, int bytecode[], i
 			add_plugin_stencil_pos(stencils, i, stencil, data);
 	}
 }
+
+#ifdef PROFILE_STENCILS
+// Bracket every instruction with the profiling plugin stencils, replacing the
+// old in-stencil PROFILING_START/END. Per opcode: bump the execution count and
+// save the entry timestamp before the body, then accumulate (exit - start) into
+// total_cycles after it. Each plugin's GETCUSTOM() is patched to the matching
+// field of the process-global stencil_profile_info[op] that C_rcp_get_profiling
+// reads: COUNT -> call_count, TSC_BEGIN -> tsc_start scratch, TSC_END -> the
+// whole struct (it needs both tsc_start and total_cycles).
+//
+// TSC_END is an after-plugin, so an instruction that transfers control (a taken
+// branch, GOTO, RETURN) skips it: that execution contributes its count but no
+// cycles, rather than a half-measured interval.
+static void profile_instructions(int bytecode[], int bytecode_size, PluginStencils *plugins)
+{
+	for (int i = 0; i < bytecode_size; i += RCP_BC_ARG_CNT[bytecode[i]] + 1)
+	{
+		int op = bytecode[i];
+		add_plugin_stencil_pos(plugins, i, &_RCP_PROFILE_COUNT, &stencil_profile_info[op].call_count);
+		add_plugin_stencil_pos(plugins, i, &_RCP_PROFILE_TSC_BEGIN, &stencil_profile_info[op].tsc_start);
+		add_plugin_stencil_pos_ex(plugins, i, &_RCP_PROFILE_TSC_END, &stencil_profile_info[op], 1);
+	}
+}
+#endif
 
 static void reset_type_trace(TypeTrace *trace)
 {
@@ -2194,6 +2264,10 @@ static SEXP copy_patch_bc(SEXP bcode, int recursive, CompilationStats *stats,
 	// Example of adding a plugin stencil to all stencil at beggining and end of the function:
 	// add_plugin_stencil_pos(&plugins, 0, &_RCP_CUSTOM_MYATSTART, NULL);
 	// add_plugin_stencil_instr(&plugins, bytecode, bytecode_size, RETURN_BCOP, &_RCP_CUSTOM_MYATEXIT, NULL);
+
+#ifdef PROFILE_STENCILS
+	profile_instructions(bytecode, bytecode_size, &plugins);
+#endif
 
 	/******************************** */
 
@@ -2813,7 +2887,7 @@ SEXP C_rcp_jit_disable()
 SEXP C_rcp_get_profiling(void)
 {
 #ifdef PROFILE_STENCILS
-	const size_t num_opcodes = sizeof(OPCODES_NAMES) / sizeof(*OPCODES_NAMES);
+	const size_t num_opcodes = NUM_OPCODES;
 
 	// Create index array for sorting
 	size_t *sorted_indices = (size_t *)R_alloc(num_opcodes, sizeof(size_t));
